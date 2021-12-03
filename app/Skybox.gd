@@ -3,8 +3,12 @@ extends Spatial
 onready var Noise = get_node("/root/Noise")
 var minmax_value: Vector2
 
-export var skip_generating: bool = false
-export var live_preview: bool = true
+enum Mode {
+	VIEW_SKYBOX,
+	GENERATE_SKYBOX,
+}
+
+export(Mode) var mode = Mode.VIEW_SKYBOX
 
 #texture width and height in pixels
 export var size: int = 500
@@ -45,15 +49,13 @@ var tiles = [
 ]
 
 func _ready():
-	if not skip_generating:
+	if mode == Mode.GENERATE_SKYBOX:
 		_preflight()
 		_create_skybox()
 		_print_mt_table()
-	
-	if not live_preview:
 		get_tree().quit()
-		
-	_scale_sprites()
+	else:
+		_scale_sprites()
 
 func _preflight():
 	var params: Noise.PreflightParams
