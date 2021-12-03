@@ -29,6 +29,21 @@ export(Array, String) var textures : Array = [
 	"south.png"
 ]
 
+enum FixedSide {
+	X,
+	Y,
+	Z
+}
+
+var tiles = [
+	[FixedSide.Y, size, false, false, false],
+	[FixedSide.Y, 0, false, true, false],
+	[FixedSide.Z, size, false, true, false],
+	[FixedSide.Z, 0, true, true, false],
+	[FixedSide.X, size, true, true, true],
+	[FixedSide.X, 0, true, false, true]
+]
+
 func _ready():
 	if not skip_generating:
 		_preflight()
@@ -52,85 +67,47 @@ func _preflight():
 	minmax_value = Noise.round_preflight(Noise.preflight_3d(params))
 
 func _create_skybox() -> void:
-	top()
-	bottom()
-	west()
-	east()
-	north()
-	south()
+	for i in range(tiles.size()):
+		tile(tiles[i][0], tiles[i][1], tiles[i][2], tiles[i][3], tiles[i][4], i)
 
 ################################################################################
 
-func top() -> void:
+
+func tile(fixed_side: int, level: int, flip_i: bool, flip_j: bool, rotate: bool, texture_index: int) -> void:
+	var get_value: FuncRef = _get_value_fn(fixed_side)
 	var img = _create_image()
 	img.lock()
-	for x in range(size):
-		for z in range(size):
-			var value = _get_value(x, size, z)
+	for i in range(size):
+		for j in range(size):
+			var value = get_value.call_func(level, i, j)
 			var color = _get_color(value)
-			img.set_pixel(x, z, color)
+			if flip_i:
+				i = size-i-1
+			if flip_j:
+				j = size-j-1
+			if rotate:
+				img.set_pixel(j, i, color)
+			else:
+				img.set_pixel(i, j, color)
 	img.unlock()
-	_save_img(img, textures[0])
+	_save_img(img, textures[texture_index])
 
+func _get_value_fn(fixed_side: int) -> FuncRef:
+	if fixed_side == FixedSide.X:
+		return funcref(self, "_get_value_fixed_x")
+	if fixed_side == FixedSide.Y:
+		return funcref(self, "_get_value_fixed_y")
+	return funcref(self, "_get_value_fixed_z")
 
-func bottom() -> void:
-	var img = _create_image()
-	img.lock()
-	for x in range(size):
-		for z in range(size):
-			var value = _get_value(x, 0, z)
-			var color = _get_color(value)
-			img.set_pixel(x, size-z-1, color)
-	img.unlock()
-	_save_img(img, textures[1])
+func _get_value_fixed_x(x: int, y: int, z: int) -> float:
+	return _get_value(x, y, z)
 
+func _get_value_fixed_y(y: int, x: int, z: int) -> float:
+	return _get_value(x, y, z)
 
-func west() -> void:
-	var img = _create_image()
-	img.lock()
-	for x in range(size):
-		for y in range(size):
-			var value = _get_value(x, y, size)
-			var color = _get_color(value)
-			img.set_pixel(x, size-y-1, color)
-	img.unlock()
-	_save_img(img, textures[2])
+func _get_value_fixed_z(z: int, x: int, y: int) -> float:
+	return _get_value(x, y, z)
 
-
-func east() -> void:
-	var img = _create_image()
-	img.lock()
-	for x in range(size):
-		for y in range(size):
-			var value = _get_value(x, y, 0)
-			var color = _get_color(value)
-			img.set_pixel(size-x-1, size-y-1, color)
-	img.unlock()
-	_save_img(img, textures[3])
-
-
-func north() -> void:
-	var img = _create_image()
-	img.lock()
-	for y in range(size):
-		for z in range(size):
-			var value = _get_value(size, y, z)
-			var color = _get_color(value)
-			img.set_pixel(size-z-1, size-y-1, color)
-	img.unlock()
-	_save_img(img, textures[4])
-
-
-func south() -> void:
-	var img = _create_image()
-	img.lock()
-	for y in range(size):
-		for z in range(size):
-			var value = _get_value(0, y, z)
-			var color = _get_color(value)
-			img.set_pixel(z, size-y-1, color)
-	img.unlock()
-	_save_img(img, textures[5])
 
 ################################################################################
 

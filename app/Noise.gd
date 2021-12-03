@@ -1,7 +1,7 @@
 extends Node
 
 export var _seed: int = 42
-export var _octaves = 10
+export var _octaves = 3
 export var _period = 200
 
 var noise: OpenSimplexNoise
