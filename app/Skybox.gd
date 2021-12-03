@@ -24,11 +24,12 @@ export(Array, String) var textures : Array = [
 func _ready():
 	if not skip_generating:
 		_create_skybox()
-		_scale_sprites()
 		_print_mt_table()
 	
 	if not live_preview:
 		get_tree().quit()
+	
+	_scale_sprites()
 
 func _create_skybox() -> void:
 	top()
