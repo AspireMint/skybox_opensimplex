@@ -1,9 +1,10 @@
 extends Spatial
 
 onready var Noise = get_node("/root/Noise")
+var minmax_value: Vector2
 
-export var skip_generating: bool = true
-export var live_preview: bool = false
+export var skip_generating: bool = false
+export var live_preview: bool = true
 
 #texture width and height in pixels
 export var size: int = 500
@@ -28,8 +29,18 @@ export(Array, String) var textures : Array = [
 	"south.png"
 ]
 
-onready var minmax_value: Vector2 = _get_preflight()
-func _get_preflight():
+func _ready():
+	if not skip_generating:
+		_preflight()
+		_create_skybox()
+		_print_mt_table()
+	
+	if not live_preview:
+		get_tree().quit()
+		
+	_scale_sprites()
+
+func _preflight():
 	var params: Noise.PreflightParams
 	if projection == Projection.SPHERE:
 		var dimension = Vector3(2*sphere_radius, 2*sphere_radius, 2*sphere_radius)
@@ -38,17 +49,7 @@ func _get_preflight():
 	elif projection == Projection.CUBE:
 		var dimension = Vector3(size, size, size)
 		params = Noise.PreflightParams.new(dimension)
-	return Noise.round_preflight(Noise.preflight_3d(params))
-
-func _ready():
-	if not skip_generating:
-		_create_skybox()
-		_print_mt_table()
-	
-	if not live_preview:
-		get_tree().quit()
-		
-	_scale_sprites()
+	minmax_value = Noise.round_preflight(Noise.preflight_3d(params))
 
 func _create_skybox() -> void:
 	top()
