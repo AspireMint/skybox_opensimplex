@@ -2,13 +2,20 @@ extends Spatial
 
 onready var Noise = get_node("/root/Noise")
 
-export var skip_generating: bool = false
-export var live_preview: bool = true
+export var skip_generating: bool = true
+export var live_preview: bool = false
 
 #texture width and height in pixels
 export var size: int = 500
+# warning-ignore:integer_division
 onready var halfsize: int = size/2
 onready var sphere_radius: int = size
+
+enum Projection {
+	CUBE,
+	SPHERE
+}
+export(Projection) var projection = Projection.SPHERE
 
 export var textures_directory: String = "textures"
 # Minetest: order: Y+ (top), Y- (bottom), X- (west), X+ (east), Z+ (north), Z- (south)
@@ -21,6 +28,18 @@ export(Array, String) var textures : Array = [
 	"south.png"
 ]
 
+onready var minmax_value: Vector2 = _get_preflight()
+func _get_preflight():
+	var params: Noise.PreflightParams
+	if projection == Projection.SPHERE:
+		var dimension = Vector3(2*sphere_radius, 2*sphere_radius, 2*sphere_radius)
+		var origin = Vector3(-sphere_radius, -sphere_radius, -sphere_radius)
+		params = Noise.PreflightParams.new(dimension, origin)
+	elif projection == Projection.CUBE:
+		var dimension = Vector3(size, size, size)
+		params = Noise.PreflightParams.new(dimension)
+	return Noise.round_preflight(Noise.preflight_3d(params))
+
 func _ready():
 	if not skip_generating:
 		_create_skybox()
@@ -28,7 +47,7 @@ func _ready():
 	
 	if not live_preview:
 		get_tree().quit()
-	
+		
 	_scale_sprites()
 
 func _create_skybox() -> void:
@@ -122,8 +141,12 @@ func _create_image() -> Image:
 ################################################################################
 
 func _get_value(x: int, y: int, z: int) -> float:
-	#return _get_value_from_cube_but_looks_bad(x, y, z)
-	return _get_value_from_sphere(x, y, z)
+	if projection == Projection.SPHERE:
+		return _get_value_from_sphere(x, y, z)
+	elif projection == Projection.CUBE:
+		return _get_value_from_cube_but_looks_bad(x, y, z)
+	assert(false)
+	return 0.0
 
 func _get_value_from_cube_but_looks_bad(x: int, y: int, z: int) -> float:
 	var value = Noise.get_noise_3d(x, y, z)
@@ -158,9 +181,9 @@ var colors = [
 	[255, 255, 255],
 ]
 func _some_colors(value: float) -> Color:
-	var guessed_max_value = -0.2 # :D
-	var rgb = range_lerp(value, -1, guessed_max_value, 0, 1)
-	var index: int = range_lerp(value, -1, 1, 0, colors.size())
+	var rgb = range_lerp(value, minmax_value.x, minmax_value.y, 0, 1)
+# warning-ignore:narrowing_conversion
+	var index: int = range_lerp(value, minmax_value.x, minmax_value.y, 0, colors.size())
 	var r = range_lerp(colors[index][0] * rgb, 0, 255, 0, 1)
 	var g = range_lerp(colors[index][1] * rgb, 0, 255, 0, 1)
 	var b = range_lerp(colors[index][2] * rgb, 0, 255, 0, 1)
@@ -176,6 +199,7 @@ func _get_texture_path(file_name: String) -> String:
 	return "res://" + textures_directory + "/" + file_name
 
 func _scale_sprites() -> void:
+# warning-ignore:integer_division
 	var scale = (500 / size) * Vector3(2,2,2)
 	$Top.scale = scale
 	$Bottom.scale = scale
