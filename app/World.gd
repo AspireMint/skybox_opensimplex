@@ -1,11 +1,9 @@
 extends Spatial
 
-export var _fov: float = 70
 export var _mouse_sensitivity: float = 0.5
 
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	$Camera.fov = _fov
 
 
 func _input(event):

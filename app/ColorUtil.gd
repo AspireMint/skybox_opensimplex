@@ -18,6 +18,9 @@ func from_value(value: float, colors: Array = ColorSet.GREYSCALE) -> Color:
 	
 	return Color(red, green, blue)
 
+func by_alpha(alpha: float) -> Color:
+	return Color(0, 0, 0, alpha)
+
 func mix_colors(c1: Color, c2: Color) -> Color:
 	return Color((c1.r+c2.r)/2, (c1.g+c2.g)/2, (c1.b+c2.b)/2)
 

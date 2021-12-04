@@ -28,6 +28,7 @@ export(bool) var use_preflight = false
 enum ColorTheme {
 	GREYSCALE,
 	BLACKISH,
+	ALPHA_CHANNEL,
 	REDDISH,
 	RAINBOW,
 	SPACE_HEAT_MAP,
@@ -36,7 +37,7 @@ enum ColorTheme {
 export(ColorTheme) var color_theme = ColorTheme.BLACKISH
 onready var theme_fn: FuncRef = _get_theme_fn()
 
-var textures_directory: String = "textures"
+const textures_directory: String = "textures"
 # Minetest: order: Y+ (top), Y- (bottom), X- (west), X+ (east), Z+ (north), Z- (south)
 export(Array, String) var textures : Array = [
 	"top.png",
@@ -46,6 +47,19 @@ export(Array, String) var textures : Array = [
 	"north.png",
 	"south.png"
 ]
+
+export(bool) var draw_grid = false
+export(bool) var grid_to_image = false
+const grid_filename = "grid.png"
+
+enum GridStyle {
+	LINES,
+	DOTS
+}
+export(GridStyle) var grid_style = GridStyle.LINES
+
+export(int) var grid_columns = 10
+export(Color) var grid_color = Color.white
 
 enum FixedSide {
 	X,
@@ -70,6 +84,8 @@ func _ready():
 		if use_preflight:
 			_preflight()
 		_create_skybox()
+		if draw_grid and !grid_to_image:
+			_create_grid_image()
 		_print_mt_table()
 		get_tree().quit()
 	else:
@@ -101,6 +117,8 @@ func _get_theme_fn() -> FuncRef:
 			fn_name = "_greyscale"
 		ColorTheme.BLACKISH:
 			fn_name = "_blackish"
+		ColorTheme.ALPHA_CHANNEL:
+			fn_name = "_alpha_channel"
 		ColorTheme.RAINBOW:
 			fn_name = "_rainbow_colors"
 		ColorTheme.REDDISH:
@@ -138,6 +156,8 @@ func tile(fixed_side: int, level: int, flip_i: bool, flip_j: bool, rotate: bool,
 				img.set_pixel(j, i, color)
 			else:
 				img.set_pixel(i, j, color)
+	if draw_grid and grid_to_image:
+		_draw_grid_to_image(img)
 	img.unlock()
 	_save_img(img, textures[texture_index])
 
@@ -159,10 +179,40 @@ func _get_value_fixed_z(z: int, x: int, y: int) -> float:
 
 ################################################################################
 
+func _create_grid_image() -> void:
+	print("[started] Grid generation. Please wait.")
+	print("  ", grid_filename, " is being processed")
+	var img = _create_image()
+	img.fill(Color.transparent)
+	img.lock()
+	_draw_grid_to_image(img)
+	img.unlock()
+	_save_img(img, grid_filename)
+	print("[finished] Grid generation.")
+
 func _create_image() -> Image:
 	var img = Image.new()
-	img.create(size, size, false, Image.FORMAT_RGB8)
+	img.create(size, size, false, Image.FORMAT_RGBA8)
 	return img
+
+func _draw_grid_to_image(img: Image) -> void:
+	var spacing = int(size/grid_columns)
+	if spacing < 1:
+		assert(false)
+	
+	if grid_style == GridStyle.LINES:
+		for i in range(size):
+			img.set_pixel(i, size-1, grid_color)
+			var steps = 1 if i%spacing == 0 else spacing
+			for j in range(0, size-1, steps):
+				img.set_pixel(i, j, grid_color)
+				img.set_pixel(size-1, j, grid_color)
+	elif grid_style == GridStyle.DOTS:
+		for i in range(0, size, spacing):
+			img.set_pixel(i, size-1, grid_color)
+			for j in range(0, size, spacing):
+				img.set_pixel(i, j, grid_color)
+				img.set_pixel(size-1, j, grid_color)
 
 ################################################################################
 
@@ -199,12 +249,19 @@ func _greyscale(value: float) -> Color:
 
 func _blackish(value: float) -> Color:
 	var treshold = 0
-	var darkness = 0
 	if value < treshold:
-		value = range_lerp(value, -1, treshold, 0, darkness)
+		value = 0
 	else:
-		value = range_lerp(value, treshold, 1, darkness, 1)
+		value = range_lerp(value, treshold, 1, 0, 1)
 	return ColorUtil.from_value(value)
+
+func _alpha_channel(value: float) -> Color:
+	var treshold = 0
+	if value < treshold:
+		value = 0
+	else:
+		value = range_lerp(value, treshold, 1, 0, 1)
+	return ColorUtil.by_alpha(1-value)
 
 func _reddish(value: float) -> Color:
 	var color = ColorUtil.from_value(range_lerp(value, -1, 1, 0, 1))
@@ -218,11 +275,10 @@ func _space_heat_map(value: float) -> Color:
 
 func _space(value: float) -> Color:
 	var treshold = 0.3
-	var darkness = 0
 	if value < treshold:
-		value = range_lerp(value, -1, treshold, 0, darkness)
+		value = 0
 	else:
-		value = range_lerp(value, treshold, 1, darkness, 1)
+		value = range_lerp(value, treshold, 1, 0, 1)
 	return ColorUtil.from_value(value, ColorUtil.space_set)
 
 ################################################################################
@@ -246,6 +302,11 @@ func _scale_sprites() -> void:
 	$South.scale = scale
 
 func _print_mt_table() -> void:
+	var delimiter = "-"
+	var d = ""
+	for n in range(80):
+		d += delimiter
+	print(d)
 	var t = "local skybox = {"
 	for i in range(textures.size()):
 		t += '"'+textures[i]+'"'
