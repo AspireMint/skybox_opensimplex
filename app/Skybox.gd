@@ -1,20 +1,11 @@
 extends Spatial
 
-onready var Noise = get_node("/root/Noise")
-var minmax_value: Vector2
-
 enum Mode {
-	VIEW_SKYBOX,
 	GENERATE_SKYBOX,
+	VIEW_SKYBOX
 }
 
-export(Mode) var mode = Mode.VIEW_SKYBOX
-
-#texture width and height in pixels
-export var size: int = 500
-# warning-ignore:integer_division
-onready var halfsize: int = size/2
-onready var sphere_radius: int = size
+export(Mode) var mode = Mode.GENERATE_SKYBOX
 
 enum Projection {
 	CUBE,
@@ -22,7 +13,29 @@ enum Projection {
 }
 export(Projection) var projection = Projection.SPHERE
 
-export var textures_directory: String = "textures"
+#texture width and height in pixels
+export var size: int = 500
+onready var halfsize: int = float(size)/2
+onready var sphere_radius: int = size
+
+export var _seed: int = 42
+export var _octaves: int = 3
+export var _period: float = 400
+
+export(bool) var use_preflight = false
+
+enum ColorTheme {
+	GREYSCALE,
+	BLACKISH,
+	REDDISH,
+	RAINBOW,
+	SPACE_HEAT_MAP,
+	SPACE
+}
+export(ColorTheme) var color_theme = ColorTheme.BLACKISH
+onready var theme_fn: FuncRef = _get_theme_fn()
+
+var textures_directory: String = "textures"
 # Minetest: order: Y+ (top), Y- (bottom), X- (west), X+ (east), Z+ (north), Z- (south)
 export(Array, String) var textures : Array = [
 	"top.png",
@@ -50,14 +63,20 @@ var tiles = [
 
 func _ready():
 	if mode == Mode.GENERATE_SKYBOX:
-		_preflight()
+		_update_noise_params()
+		if use_preflight:
+			_preflight()
 		_create_skybox()
 		_print_mt_table()
 		get_tree().quit()
 	else:
 		_scale_sprites()
 
+func _update_noise_params() -> void:
+	Noise.set_params(_seed, _octaves, _period)
+
 func _preflight():
+	print("[started] Preflight. Please wait.")
 	var params: Noise.PreflightParams
 	if projection == Projection.SPHERE:
 		var dimension = Vector3(2*sphere_radius, 2*sphere_radius, 2*sphere_radius)
@@ -66,14 +85,37 @@ func _preflight():
 	elif projection == Projection.CUBE:
 		var dimension = Vector3(size, size, size)
 		params = Noise.PreflightParams.new(dimension)
-	minmax_value = Noise.round_preflight(Noise.preflight_3d(params))
+	Noise.preflight_3d(params)
+	Noise.round_preflight()
+	print("[finished] Preflight")
+
+func _get_theme_fn() -> FuncRef:
+	var fn_name: String
+	match color_theme:
+		ColorTheme.GREYSCALE:
+			fn_name = "_greyscale"
+		ColorTheme.BLACKISH:
+			fn_name = "_blackish"
+		ColorTheme.RAINBOW:
+			fn_name = "_rainbow_colors"
+		ColorTheme.REDDISH:
+			fn_name = "_reddish"
+		ColorTheme.SPACE_HEAT_MAP:
+			fn_name = "_space_heat_map"
+		ColorTheme.SPACE:
+			fn_name = "_space"
+		_:
+			fn_name = "_greyscale" #default
+	return funcref(self, fn_name)
 
 func _create_skybox() -> void:
+	print("[started] Generating of skybox. Please wait.")
 	for i in range(tiles.size()):
+		print("  ", textures[i], " is being processed")
 		tile(tiles[i][0], tiles[i][1], tiles[i][2], tiles[i][3], tiles[i][4], i)
+	print("[finished] Generating of skybox")
 
 ################################################################################
-
 
 func tile(fixed_side: int, level: int, flip_i: bool, flip_j: bool, rotate: bool, texture_index: int) -> void:
 	var get_value: FuncRef = _get_value_fn(fixed_side)
@@ -110,7 +152,6 @@ func _get_value_fixed_y(y: int, x: int, z: int) -> float:
 func _get_value_fixed_z(z: int, x: int, y: int) -> float:
 	return _get_value(x, y, z)
 
-
 ################################################################################
 
 func _create_image() -> Image:
@@ -139,48 +180,59 @@ func _get_value_from_sphere(x: int, y: int, z: int) -> float:
 	return _process_value(value)
 
 func _process_value(value: float) -> float:
-	return (value-0.5)*1.5 #whatever :D
+	value = clamp(value, Noise.minmax.x, Noise.minmax.y)
+	value = range_lerp(value, Noise.minmax.x, Noise.minmax.y, -1, 1)
+	return value
+
+func _get_color(value: float) -> Color:
+	return theme_fn.call_func(value)
 
 ################################################################################
 
-func _get_color(value: float) -> Color:
-	return _greyscale(value)
-	#return _some_colors(value)
-
 func _greyscale(value: float) -> Color:
-	var rgb = range_lerp(value, -1, 1, 0, 1)
-	return Color(rgb, rgb, rgb)
+	return ColorUtil.from_value(range_lerp(value, -1, 1, 0, 1))
 
-var colors = [
-	[255, 0, 0],
-	[0, 255, 0],
-	[0, 0, 255],
-	[255, 255, 0],
-	[255, 0, 255],
-	[0, 255, 255],
-	[255, 255, 255],
-]
-func _some_colors(value: float) -> Color:
-	var rgb = range_lerp(value, minmax_value.x, minmax_value.y, 0, 1)
-# warning-ignore:narrowing_conversion
-	var index: int = range_lerp(value, minmax_value.x, minmax_value.y, 0, colors.size())
-	var r = range_lerp(colors[index][0] * rgb, 0, 255, 0, 1)
-	var g = range_lerp(colors[index][1] * rgb, 0, 255, 0, 1)
-	var b = range_lerp(colors[index][2] * rgb, 0, 255, 0, 1)
-	return Color(r, g, b)
+func _blackish(value: float) -> Color:
+	var treshold = 0
+	var darkness = 0
+	if value < treshold:
+		value = range_lerp(value, -1, treshold, 0, darkness)
+	else:
+		value = range_lerp(value, treshold, 1, darkness, 1)
+	return ColorUtil.from_value(value)
+
+func _reddish(value: float) -> Color:
+	var color = ColorUtil.from_value(range_lerp(value, -1, 1, 0, 1))
+	return ColorUtil.mask_color(color, Color.red)
+
+func _rainbow_colors(value: float) -> Color:
+	return ColorUtil.from_value(range_lerp(value, -1, 1, 0, 1), ColorSet.RAINBOW)
+
+func _space_heat_map(value: float) -> Color:
+	return ColorUtil.from_value(range_lerp(value, -1, 1, 0, 1), ColorSet.SPACE)
+
+func _space(value: float) -> Color:
+	var treshold = 0.3
+	var darkness = 0
+	if value < treshold:
+		value = range_lerp(value, -1, treshold, 0, darkness)
+	else:
+		value = range_lerp(value, treshold, 1, darkness, 1)
+	return ColorUtil.from_value(value, ColorUtil.space_set)
+
+################################################################################
 
 func _save_img(img: Image, file_name: String) -> void:
 	var full_path = _get_texture_path(file_name)
 	var error = img.save_png(full_path)
 	if error:
-		print("ERROR:", "Could not save "+full_path)
+		print("[ERROR] Could not save "+full_path)
 
 func _get_texture_path(file_name: String) -> String:
 	return "res://" + textures_directory + "/" + file_name
 
 func _scale_sprites() -> void:
-# warning-ignore:integer_division
-	var scale = (500 / size) * Vector3(2,2,2)
+	var scale = (float(500) / size) * Vector3(2,2,2)
 	$Top.scale = scale
 	$Bottom.scale = scale
 	$West.scale = scale

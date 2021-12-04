@@ -1,22 +1,17 @@
 extends Node
 
-export var _seed: int = 42
-export var _octaves = 3
-export var _period = 200
+var noise := OpenSimplexNoise.new()
+var minmax := Vector2(-1, 1)
 
-var noise: OpenSimplexNoise
-
-func _ready():
-	noise = OpenSimplexNoise.new()
-	noise.seed = _seed
+func set_params(_seed: int, _octaves: int, _period: float) -> void:
+	noise.seed = 42
 	noise.octaves = _octaves
 	noise.period = _period
 
 func get_noise_3d(x: float, y: float, z: float) -> float:
 	return noise.get_noise_3d(x, y, z)
 
-func preflight_3d(params: PreflightParams) -> Vector2:
-	
+func preflight_3d(params: PreflightParams) -> void:
 	var origin = params.origin
 	var dimension = params.dimension
 	var precision = params.precision
@@ -29,7 +24,7 @@ func preflight_3d(params: PreflightParams) -> Vector2:
 		else:
 			precision = ceil(arr[1]/10)
 	
-	var minmax = Vector2(1.0, -1.0)
+	minmax = Vector2(1.0, -1.0)
 	for x in range(dimension.x / precision):
 		for y in range(dimension.y / precision):
 			for z in range(dimension.y / precision):
@@ -42,12 +37,10 @@ func preflight_3d(params: PreflightParams) -> Vector2:
 				if value > minmax.y:
 					minmax.y = value
 	assert(minmax.x < minmax.y)
-	return minmax
 
-func round_preflight(minmax: Vector2) -> Vector2:
+func round_preflight() -> void:
 	minmax.x = floor(minmax.x*10)/10
 	minmax.y = ceil(minmax.y*10)/10
-	return minmax
 
 ################################################################################
 
@@ -56,7 +49,7 @@ class PreflightParams extends Object:
 	var origin: Vector3
 	var precision: int
 	
-	func _init(dimension: Vector3, origin: Vector3 = Vector3(0,0,0), precision: int = 0):
-		self.dimension = dimension
-		self.origin = origin
-		self.precision = precision
+	func _init(_dimension: Vector3, _origin: Vector3 = Vector3(0,0,0), _precision: int = 0):
+		dimension = _dimension
+		origin = _origin
+		precision = _precision

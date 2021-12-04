@@ -17,6 +17,8 @@ config/icon="res://icon.png"
 [autoload]
 
 Noise="*res://Noise.gd"
+ColorUtil="*res://ColorUtil.gd"
+ColorSet="*res://ColorSet.gd"
 
 [physics]
 
