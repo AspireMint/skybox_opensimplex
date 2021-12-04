@@ -18,6 +18,7 @@ export var size: int = 500
 onready var halfsize: int = float(size)/2
 onready var sphere_radius: int = size
 
+export(bool) var random_seed = false
 export var _seed: int = 42
 export var _octaves: int = 3
 export var _period: float = 400
@@ -62,6 +63,8 @@ var tiles = [
 ]
 
 func _ready():
+	randomize()
+	
 	if mode == Mode.GENERATE_SKYBOX:
 		_update_noise_params()
 		if use_preflight:
@@ -73,6 +76,8 @@ func _ready():
 		_scale_sprites()
 
 func _update_noise_params() -> void:
+	if random_seed:
+		_seed = randi()
 	Noise.set_params(_seed, _octaves, _period)
 
 func _preflight():

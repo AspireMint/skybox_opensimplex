@@ -4,7 +4,7 @@ var noise := OpenSimplexNoise.new()
 var minmax := Vector2(-1, 1)
 
 func set_params(_seed: int, _octaves: int, _period: float) -> void:
-	noise.seed = 42
+	noise.seed = _seed
 	noise.octaves = _octaves
 	noise.period = _period
 
