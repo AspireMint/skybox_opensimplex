@@ -22,3 +22,12 @@ const SPACE = [
 	Color.white,
 	Color.blue
 ]
+const HEAT = [
+	Color.black,
+	Color.blue,
+	Color.cyan,
+	Color.green,
+	Color.yellow,
+	Color.red,
+	Color.white
+]

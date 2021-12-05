@@ -124,7 +124,7 @@ func _get_theme_fn() -> FuncRef:
 		ColorTheme.REDDISH:
 			fn_name = "_reddish"
 		ColorTheme.SPACE_HEAT_MAP:
-			fn_name = "_space_heat_map"
+			fn_name = "_heat_map"
 		ColorTheme.SPACE:
 			fn_name = "_space"
 		_:
@@ -256,11 +256,11 @@ func _blackish(value: float) -> Color:
 	return ColorUtil.from_value(value)
 
 func _alpha_channel(value: float) -> Color:
-	var treshold = 0
-	if value < treshold:
+	var threshold = 0
+	if value < threshold:
 		value = 0
 	else:
-		value = range_lerp(value, treshold, 1, 0, 1)
+		value = range_lerp(value, threshold, 1, 0, 1)
 	return ColorUtil.by_alpha(1-value)
 
 func _reddish(value: float) -> Color:
@@ -270,16 +270,16 @@ func _reddish(value: float) -> Color:
 func _rainbow_colors(value: float) -> Color:
 	return ColorUtil.from_value(range_lerp(value, -1, 1, 0, 1), ColorSet.RAINBOW)
 
-func _space_heat_map(value: float) -> Color:
-	return ColorUtil.from_value(range_lerp(value, -1, 1, 0, 1), ColorSet.SPACE)
+func _heat_map(value: float) -> Color:
+	return ColorUtil.from_value(range_lerp(value, -1, 1, 0, 1), ColorSet.HEAT)
 
 func _space(value: float) -> Color:
-	var treshold = 0.3
-	if value < treshold:
+	var threshold = 0.3
+	if value < threshold:
 		value = 0
 	else:
-		value = range_lerp(value, treshold, 1, 0, 1)
-	return ColorUtil.from_value(value, ColorUtil.space_set)
+		value = range_lerp(value, threshold, 1, 0, 1)
+	return ColorUtil.from_value(value, ColorSet.SPACE)
 
 ################################################################################
 
@@ -304,6 +304,7 @@ func _scale_sprites() -> void:
 func _print_mt_table() -> void:
 	var delimiter = "-"
 	var d = ""
+# warning-ignore:unused_variable
 	for n in range(80):
 		d += delimiter
 	print(d)
