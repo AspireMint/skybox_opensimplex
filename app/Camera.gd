@@ -1,6 +1,6 @@
 extends Camera
 
-export var _mouse_sensitivity: float = 0.5
+export var mouse_sensitivity: float = 0.5
 
 func _input(event):
 	if get_parent().can_move():
@@ -10,9 +10,9 @@ func _input(event):
 func _aim(event) -> void:
 	var mouse_motion = event as InputEventMouseMotion
 	if mouse_motion:
-		rotation_degrees.y -= mouse_motion.relative.x * _mouse_sensitivity
+		rotation_degrees.y -= mouse_motion.relative.x * mouse_sensitivity
 		var current_tilt = rotation_degrees.x
-		current_tilt -= mouse_motion.relative.y * _mouse_sensitivity
+		current_tilt -= mouse_motion.relative.y * mouse_sensitivity
 		rotation_degrees.x = clamp(current_tilt, -90, 90)
 
 func _update_axes() -> void:

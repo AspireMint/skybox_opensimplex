@@ -96,7 +96,7 @@ func _update_noise_params() -> void:
 		_seed = randi()
 	Noise.set_params(_seed, _octaves, _period)
 
-func _preflight():
+func _preflight() -> void:
 	print("[started] Preflight. Please wait.")
 	var params: Noise.PreflightParams
 	if projection == Projection.SPHERE:
@@ -135,12 +135,12 @@ func _create_skybox() -> void:
 	print("[started] Generating of skybox. Please wait.")
 	for i in range(tiles.size()):
 		print("  ", textures[i], " is being processed")
-		tile(tiles[i][0], tiles[i][1], tiles[i][2], tiles[i][3], tiles[i][4], i)
+		_tile(tiles[i][0], tiles[i][1], tiles[i][2], tiles[i][3], tiles[i][4], i)
 	print("[finished] Generating of skybox")
 
 ################################################################################
 
-func tile(fixed_side: int, level: int, flip_i: bool, flip_j: bool, rotate: bool, texture_index: int) -> void:
+func _tile(fixed_side: int, level: int, flip_i: bool, flip_j: bool, rotate: bool, texture_index: int) -> void:
 	var get_value: FuncRef = _get_value_fn(fixed_side)
 	var img = _create_image()
 	img.lock()
@@ -294,18 +294,13 @@ func _get_texture_path(file_name: String) -> String:
 
 func _scale_sprites() -> void:
 	var scale = (float(500) / size) * Vector3(2,2,2)
-	$Top.scale = scale
-	$Bottom.scale = scale
-	$West.scale = scale
-	$East.scale = scale
-	$North.scale = scale
-	$South.scale = scale
+	for i in range(get_child_count()):
+		(get_child(i) as Sprite3D).scale = scale
 
 func _print_mt_table() -> void:
 	var delimiter = "-"
 	var d = ""
-# warning-ignore:unused_variable
-	for n in range(80):
+	for _n in range(80):
 		d += delimiter
 	print(d)
 	var t = "local skybox = {"
